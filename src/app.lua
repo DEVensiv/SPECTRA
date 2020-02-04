@@ -171,14 +171,14 @@ while run do
   updateExitBtn()
   if exitBtn:clicked(x, y) then
     exitBtn:setBackground(RED_BRIGHT)
-	os.execute("pastebin run -f paUSHQQC DEVensiv ShipComputer master")
+	os.execute("pastebin run -f paUSHQQC DEVensiv SPECTRA master")
 	
-	shell.setWorkingDirectory("/ShipComputer")
+	shell.setWorkingDirectory("/SPECTRA")
 
 	local move = function(von, nach) fs.remove(nach) fs.rename(von, nach) print(string.format("%s → %s", fs.canonical(von), fs.canonical(nach))) end
 
-	if fs.exists("/ShipComputer/autorun.lua") then
-		move("/ShipComputer/autorun.lua", "/autorun.lua")
+	if fs.exists("/SPECTRA/autorun.lua") then
+		move("/SPECTRA/autorun.lua", "/autorun.lua")
 	end
 	
     run = false
