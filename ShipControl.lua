@@ -7,12 +7,12 @@ if not component.isAvailable("gpu") then
   return
 end
 
-shell.setWorkingDirectory("/ShipComputer")
+shell.setWorkingDirectory("/SPECTRA")
 
 local move = function(von, nach) fs.remove(nach) fs.rename(von, nach) print(string.format("%s → %s", fs.canonical(von), fs.canonical(nach))) end
 
-if fs.exists("/ShipComputer/autorun.lua") then
-	move("/ShipComputer/autorun.lua", "/autorun.lua")
+if fs.exists("/SPECTRA/autorun.lua") then
+	move("/SPECTRA/autorun.lua", "/autorun.lua")
 end
 
 local app = require("src/app")
