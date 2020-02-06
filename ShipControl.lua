@@ -1,6 +1,7 @@
 local component = require("component")
 local shell = require("shell")
 local fs = require("filesystem")
+local seria = require("serialization")
 
 if not component.isAvailable("gpu") then
   io.stderr:write("GPU not found\n")

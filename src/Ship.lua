@@ -1,5 +1,7 @@
 local component = require("component")
 local classes = require("src/classes")
+local fs = require("filesystem")
+local seria = require("serialization")
 
 local gpu = component.gpu
 
@@ -7,6 +9,21 @@ local Ship = classes.class()
 
 function Ship:init(shipControl)
     self.shipControl = shipControl
+	---------------------------------------File load manager
+	if fs.exists("/position_target") then
+		file = io.open("/position_target", "r")
+		data = file:read()
+		file:close()
+		self.movement_target = seria.unserialize(data)
+		
+		if fs.exists("/move_lock") then
+			self.force_move = true
+			f,u,s = self:calcMovement(self.movement_target[1], self.movement_target[2], self.movement_target[3])
+			self:warp(f,u,s)
+		end
+	end
+	---------------------------------------File load manager end
+	
 end
 
 function Ship:shieldState()
@@ -34,7 +51,8 @@ function Ship:getEnergy()
 end
 
 function Ship:getRemoteLocation()
-    return self.shipControl.getMaxJumpDistance()
+	success, dist = self.shipControl.getMaxJumpDistance()
+    return dist
 end
 
 function Ship:requiredEnergy()
@@ -55,22 +73,32 @@ function Ship:toogleCloak()
 end
 
 function Ship:terminateAll()
-    self.shipControl.command("OFFLINE")
     self.shipControl.enable(false)
+    self.shipControl.command("OFFLINE")
     require("computer").beep()
+	os.remove("move_lock")
+	os.remove("position_target")
     return
 end
 
 function Ship:warp(f,u,s)
+	if f == 0 and u == 0 and s == 0 then
+		return "warp zero"
+	else
+
     self.shipControl.command("MANUAL")
-    self.shipControl.movement(f,u,s)
+	self.shipControl.movement(f,u,s)
     self.shipControl.enable(true)
+	return "success"
+	end
 end
 
 function Ship:calcMovement(targetx,targety,targetz)
-    
+	
     self.shipControl.enable(false)
     self.shipControl.command("MANUAL")
+	self.shipControl.movement(0,0,0)
+	
     local forward = 0
     local side = 0
     local up = 0
@@ -88,18 +116,33 @@ function Ship:calcMovement(targetx,targety,targetz)
     if type(targety) == "number" then
         ymove = targety - y
         up = ymove
-    end
+    else
+		targety = y
+	end
     
     if type(targetx) == "number" then
         xmove = targetx - x
         forward = (dx * xmove) - (dz * zmove)
-    end
+    else
+		targetx = x
+	end
     
     if type(targetz) == "number" then
         zmove = targetz - z
         side = (dz * xmove) + (dx * zmove)
-    end
+    else
+		targetz = z
+	end
     
+	self.movement_target = {targetx, targety, targetz}
+	
+	position_file = io.open("/position_target", "w")
+    position_file:write(seria.serialize(self.movement_target))
+	position_file:close()
+	info_file = io.open("/move_lock", "w")
+	info_file:write("MOVE")
+	info_file:close()
+	
 	------------------------------------------------------------Minimal jump distance handler
 	
 	local min_forward = math.abs(ship_front + ship_back  + 1) + 1
@@ -109,6 +152,7 @@ function Ship:calcMovement(targetx,targety,targetz)
 		else
 			forward = min_forward
 		end
+		self.min_warning = true
 	end
 	
 	local min_side = math.abs(ship_left  + ship_right + 1) + 1
@@ -118,6 +162,7 @@ function Ship:calcMovement(targetx,targety,targetz)
 		else
 			side = min_side
 		end
+		self.min_warning = true
 	end
 	
 	local min_up = math.abs(ship_up    + ship_down  + 1) + 1
@@ -127,11 +172,11 @@ function Ship:calcMovement(targetx,targety,targetz)
 		else
 			up = min_up
 		end
+		self.min_warning = true
 	end
 	
 	-----------------------------------------------------------Minimal jump distance handler end
 	-----------------------------------------------------------Maximal jump distance handler
-	
 	local success, maxMove = self.shipControl.getMaxJumpDistance()
 	if success then
 		local max_dist_f = math.floor(math.abs(ship_front + ship_back + 1) + maxMove)
@@ -141,6 +186,7 @@ function Ship:calcMovement(targetx,targety,targetz)
 			else
 				forward = max_dist_f
 			end
+			self.maximum = true
 		end
 	
 		local max_dist_s = math.floor(math.abs(ship_left + ship_right + 1) + maxMove)
@@ -150,6 +196,7 @@ function Ship:calcMovement(targetx,targety,targetz)
 			else
 				side = max_dist_s
 			end
+			self.maximum = true
 		end
 	
 		local max_dist_s = math.floor(math.abs(ship_up + ship_down + 1) + maxMove)
@@ -159,10 +206,17 @@ function Ship:calcMovement(targetx,targety,targetz)
 			else
 				up = max_dist_s
 			end
+			self.maximum = true
 		end
 	
 	end
 	-----------------------------------------------------------Maximal jump distance handler end
+	
+	-----------------------------------------------------------File Saving handler
+	if not self.maximum then
+		os.remove("/move_lock")
+	end
+	-----------------------------------------------------------File Saving handler end
 	
     return forward, up, side
 end

@@ -34,6 +34,7 @@ local Ship_main = require("src/Ship")
 local gpu = component.gpu
 
 Ship = Ship_main.new(component.getPrimary("warpdriveShipController"))
+
 -- draw static graphics
 graphics.draw()
 
@@ -83,13 +84,32 @@ function updateCloakBtn()
 end
 updateCloakBtn()
 
+
 -- x field
-local XFld = InputField.new(4, 7, 15, 5, "X", CYAN, TEXT_WHITE, BACKGROUND)
+local xtmp = "X"
+if Ship.force_move then
+	xtmp = tostring(Ship.movement_target[1])
+end
+local XFld = InputField.new(4, 7, 15, 5, xtmp, CYAN, TEXT_WHITE, BACKGROUND)
 XFld:draw()
 
 -- z field
-local ZFld = InputField.new(4 + 17, 7, 15, 5, "Z", CYAN, TEXT_WHITE, BACKGROUND)
+local ztmp = "Z"
+if Ship.force_move then
+	ztmp = tostring(Ship.movement_target[3])
+end
+local ZFld = InputField.new(4 + 17, 7, 15, 5, ztmp, CYAN, TEXT_WHITE, BACKGROUND)
 ZFld:draw()
+
+-- y field
+local ytmp = "Y"
+if Ship.force_move then
+	ytmp = tostring(Ship.movement_target[2])
+end
+local YFld = InputField.new(4, 39, 34, 5, ytmp, CYAN, TEXT_WHITE, BACKGROUND)
+gpu.set(17-4, 38, "Y Position")
+YFld:draw()
+
 
 -- warp button
 local warpBtn = Button.new(4, 13, 16, 3, "WARP", CYAN, TEXT_WHITE)
@@ -114,10 +134,7 @@ function updateTerminateBtn()
 end
 updateTerminateBtn()
 
--- y field
-local YFld = InputField.new(4, 39, 34, 5, "Y", CYAN, TEXT_WHITE, BACKGROUND)
-gpu.set(17-4, 38, "Y Position")
-YFld:draw()
+
 
 -- hyperspace button
 local hyperBtn = Button.new(4, 39 + 6, 34, 3, "HYPERSPACE", CYAN, TEXT_WHITE)
@@ -152,16 +169,19 @@ while run do
     graphics.drawEngines(RED_BRIGHT, 50,10)
   end
 
-  local params = { event.pull(1, "shipCoreCooldownDone") }
+  local params = { event.pull() }
   local eventName = params[1]
-  
+  local x = nil
+  local y = nil
   -- get clicks
-  local _, _, x, y = event.pull(1, "touch")
-  
-
   if tostring(eventName) == "shipCoreCooldownDone" then
 	os.execute("reboot")
   end
+  if tostring(eventName) == "touch" then
+	x = params[3]
+	y = params[4]
+  end
+
   
   -- update control elements
   graphics.drawRemoteInfo(4, 17, Ship:getRemoteLocation(), Ship:requiredEnergy())
@@ -237,9 +257,9 @@ while run do
   updateDialBtn()
   if warpBtn:clicked(x, y) then
     warpBtn:setBackground(CYAN_LIGHT)
+	
     local f,u,s = Ship:calcMovement(tonumber(XFld.raw), tonumber(YFld.raw), tonumber(ZFld.raw))
-
-    Ship:warp(f,u,s)
+    info = Ship:warp(f,u,s)
   end
   
   -- hyperspace button
